@@ -436,9 +436,11 @@ class VerilogBeautifier:
             sline = line.strip()
             if not sline:
                 continue
-            if any( [sline.startswith(x) for x in self.kw_signaltype] ) and not inside_declaration:
-                start_i = i
-                inside_declaration = True
+            rs = re.findall(r'\w+', sline)
+            if rs:
+                if(rs[0] in self.kw_signaltype) and (not inside_declaration):
+                    start_i = i
+                    inside_declaration = True
             if (not any( [sline.startswith(x) for x in self.kw_signaltype] )) and (not sline.startswith('//')) and inside_declaration: # if a line does not start with ['logic', 'wire', 'reg'] or ['//']
                 finish_i = i
                 inside_declaration = False
