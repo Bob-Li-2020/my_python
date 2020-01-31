@@ -3,6 +3,8 @@ import re
 import os
 from shutil import copyfile
 
+align_top_ports_comment_line = True
+# top comment align: "//---- xxxxx -----"
 def get_char_len(a):
     """ return the sum of characters of each item in a list.
         a: input list
@@ -260,6 +262,8 @@ class VerilogBeautifier:
         for i, line in enumerate(key_lines, start_i):
             line = line.lstrip()
             if line.startswith('//') or not line:
+                #if top_ports:
+                #    print(line)
                 continue
             # get dir_max and sig_max
             if top_ports:
@@ -313,6 +317,9 @@ class VerilogBeautifier:
         #print(f'name_max = {name_max}')
         #print(f'name_max_line = {name_max_line}')
         #input()
+        #print(f"indent+dir_max+sig_max+bw_max+bw2_max+name_max = {len(indent)}+{dir_max}+{sig_max}+{bw_max}+{bw2_max}+{name_max}")
+        gap_spaces = 7 # spaces between segments
+        sum_len = len(indent)+dir_max+sig_max+bw_max+bw2_max+name_max+gap_spaces+1 # +1: ","
         ### ----- 2. get aligned segments
         ### line is split into 5 segments:
         ### seg[0]: direction
@@ -329,8 +336,16 @@ class VerilogBeautifier:
                 indent = re.match(r"\s*", line).group()
             if not line.strip():
                 line = '\n'
-            elif line.lstrip().startswith('//'):
-                line = indent + line.lstrip()
+            elif line.lstrip().startswith('//'): # align comment line
+                if align_top_ports_comment_line and top_ports:
+                    #assert(re.match(r"\s*//-+\s+(\w+\b\s+)+-+\s*$", line)), f" illegal comment line in top ports: line {i}: {line}"
+                    if(re.match(r"\s*//-+\s+(\w+\b\s+)+-+\s*$", line)):
+                        line = indent + line.strip()
+                        assert (len(line) <= sum_len), f" sum_len = %0d; len(line) = {len(line)}; line {i}: {line}"
+                        if(len(line) < sum_len):
+                            line = line+'-'*(sum_len-len(line))+'\n'
+                else:
+                    line = indent + line.lstrip()
             else:
                 line = line.lstrip()
                 word_list = re.findall(r'\w+', line)
@@ -494,7 +509,10 @@ class VerilogBeautifier:
         for i, line in enumerate(lines):
             line_len = get_char_len(lines[i].split())
             fhline_len = get_char_len(fh_lines[i].split())
-            assert(line_len==fhline_len), f'line_line={line_len}; fhline_len={fhline_len}\nline  = "{line}"\nfhline="{fh_lines[i]}"'
+            if line.lstrip().startswith("//") and align_top_ports_comment_line:
+                pass
+            else:
+                assert(line_len==fhline_len), f'line_line={line_len}; fhline_len={fhline_len}\nline  = "{line}"\nfhline="{fh_lines[i]}"'
 
         with open(file_path, 'w') as fh:
             print(f'written to file {file_path}')
